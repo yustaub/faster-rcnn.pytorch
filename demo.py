@@ -158,20 +158,21 @@ if __name__ == '__main__':
 
   # train set
   # -- Note: Use validation set and disable the flipped to enable faster loading.
-
-  input_dir = args.load_dir + "/" + args.net + "/" + args.dataset
+  #pdb.set_trace()
+  #input_dir = args.load_dir + "/" + args.net + "/" + args.dataset
+  input_dir='/home/yuwentao/project/faster-rcnn.pytorch/models/res101/pascal_voc'
   if not os.path.exists(input_dir):
     raise Exception('There is no input directory for loading network from ' + input_dir)
   load_name = os.path.join(input_dir,
     'faster_rcnn_{}_{}_{}.pth'.format(args.checksession, args.checkepoch, args.checkpoint))
 
-  pascal_classes = np.asarray(['__background__',
-                       'aeroplane', 'bicycle', 'bird', 'boat',
-                       'bottle', 'bus', 'car', 'cat', 'chair',
-                       'cow', 'diningtable', 'dog', 'horse',
-                       'motorbike', 'person', 'pottedplant',
-                       'sheep', 'sofa', 'train', 'tvmonitor'])
-
+  # pascal_classes = np.asarray(['__background__',
+  #                      'aeroplane', 'bicycle', 'bird', 'boat',
+  #                      'bottle', 'bus', 'car', 'cat', 'chair',
+  #                      'cow', 'diningtable', 'dog', 'horse',
+  #                      'motorbike', 'person', 'pottedplant',
+  #                      'sheep', 'sofa', 'train', 'tvmonitor'])
+  pascal_classes = np.asarray(['__background__','uav'])
   # initilize the network here.
   if args.net == 'vgg16':
     fasterRCNN = vgg16(pascal_classes, pretrained=False, class_agnostic=args.class_agnostic)

@@ -100,7 +100,6 @@ if __name__ == '__main__':
 
   print('Called with args:')
   print(args)
-
   if torch.cuda.is_available() and not args.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
@@ -159,12 +158,15 @@ if __name__ == '__main__':
     fasterRCNN = resnet(imdb.classes, 152, pretrained=False, class_agnostic=args.class_agnostic)
   else:
     print("network is not defined")
-    pdb.set_trace()
+  #pdb.set_trace()
 
   fasterRCNN.create_architecture()
 
   print("load checkpoint %s" % (load_name))
+  #gpu加载模型
   checkpoint = torch.load(load_name)
+  #cpu加载模型
+  #checkpoint = torch.load(load_name,map_location='cpu')
   fasterRCNN.load_state_dict(checkpoint['model'])
   if 'pooling_mode' in checkpoint.keys():
     cfg.POOLING_MODE = checkpoint['pooling_mode']
@@ -205,7 +207,7 @@ if __name__ == '__main__':
     thresh = 0.05
   else:
     thresh = 0.0
-
+  #pdb.set_trace()
   save_name = 'faster_rcnn_10'
   num_images = len(imdb.image_index)
   all_boxes = [[[] for _ in xrange(num_images)]
