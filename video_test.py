@@ -2,14 +2,17 @@ import os
 import json
 import cv2
 from lxml.etree import Element, SubElement, tostring
-from xml.dom.minidom import parseString
+#from xml.dom.minidom import parseString
+from xml.etree import ElementTree as ET
+from xml.etree.ElementTree import ElementTree,Element
+import shutil
 
 test_path='/home/yuwentao/'
 videos_path='/home/yuwentao/data/dataset/test-dev'
 pic_path='/home/yuwentao/project/faster-rcnn.pytorch/data/VOCdevkit2007/VOC2007/JPEGImages/'
 save_xml_path='/home/yuwentao/project/faster-rcnn.pytorch/data/VOCdevkit2007/VOC2007/Annotations'
 txt_path='/home/yuwentao/project/faster-rcnn.pytorch/data/VOCdevkit2007/VOC2007/ImageSets/Main'
-
+mmnet_xml_path='/data2/gehen/TIRDataset-MMNet/TIRDataset-MMNet'
 #读取无人机视频文件并将其转换成图片存入data/VOCdevkit/VOC2007/JPEGImages/下
 def video_to_img(path):#path:/home/yuwentao/data/dataset/test-dev
     video_folders = os.listdir(path)
@@ -172,10 +175,223 @@ def make_txt(path):
                         break
                 vc.release()
         print(i, video_name + 'finished!')
+#读取/data2/gehen/TIRDataset-MMNet/TIRDataset-MMNet路径下的xml文件并修改存储到save_xml_path
+def mmnet_xml(path):
+    xml_folders1=os.listdir(path)
+    for xml_folder1 in xml_folders1:#TIR_training_001...
+        xml_path=os.path.join(path,xml_folder1)
+        xml_folders2=os.listdir(xml_path)
+        for xml_folder2 in xml_folders2:#airplane_001...
+
+            xml_path1=os.path.join(xml_path,xml_folder2)
+            xml_files=os.listdir(xml_path1)
+            for xml_file in xml_files:
+                if(xml_file.split('.')[-1]=='xml'):
+                    #读取xml信息
+                    xml_path2=os.path.join(xml_path1,xml_file)
+                    dom = xmldom.parse(xml_path2)
+                    # folder
+                    folder=dom.getElementsByTagName('folder')
+                    folder=folder[0]
+                    folder=folder.firstChild.data
+                    #filename
+                    filename=dom.getElementsByTagName('filename')
+                    filename=filename[0]
+                    filename=filename.firstChild.data
+                    #width
+                    width = dom.getElementsByTagName('width')
+                    width = width[0]
+                    width = width.firstChild.data
+                    #height
+                    height = dom.getElementsByTagName('height')
+                    height = height[0]
+                    height = height.firstChild.data
+                    #name
+                    name = dom.getElementsByTagName('name')
+                    name = name[0]
+                    name = name.firstChild.data
+                    #xmin
+                    xmin = dom.getElementsByTagName('xmin')
+                    xmin = xmin[0]
+                    xmin = xmin.firstChild.data
+                    #xmax
+                    xmax = dom.getElementsByTagName('xmax')
+                    xmax = xmax[0]
+                    xmax = xmax.firstChild.data
+                    #ymin
+                    ymin = dom.getElementsByTagName('ymin')
+                    ymin = ymin[0]
+                    ymin = ymin.firstChild.data
+                    # ymax
+                    ymax = dom.getElementsByTagName('ymax')
+                    ymax = ymax[0]
+                    ymax = ymax.firstChild.data
+
+                    #写入xml信息
+
+                    node_root = Element('annotation')
+
+                    node_folder = SubElement(node_root, 'folder')
+                    node_folder.text = 'VOC2007'
+
+                    node_filename = SubElement(node_root, 'filename')
+                    node_filename.text = folder.replace('/','+')+'+'+filename+'.jpg'
+
+                    node_size = SubElement(node_root, 'size')
+                    node_width = SubElement(node_size, 'width')
+                    node_width.text = width
+
+                    node_height = SubElement(node_size, 'height')
+                    node_height.text = height
+
+                    node_depth = SubElement(node_size, 'depth')
+                    node_depth.text = str(3)
+
+                    node_segmented = SubElement(node_root, 'segmented')
+                    node_segmented.text = str(0)
+
+                    node_object = SubElement(node_root, 'object')
+                    node_name = SubElement(node_object, 'name')
+                    node_name.text = name
+                    node_difficult = SubElement(node_object, 'difficult')
+                    node_difficult.text = '0'
+                    node_bndbox = SubElement(node_object, 'bndbox')
+                    node_xmin = SubElement(node_bndbox, 'xmin')
+                    # import pdb;pdb.set_trace()
+                    node_xmin.text = xmin
+                    node_ymin = SubElement(node_bndbox, 'ymin')
+                    node_ymin.text = ymin
+                    node_xmax = SubElement(node_bndbox, 'xmax')
+                    node_xmax.text = xmax
+                    node_ymax = SubElement(node_bndbox, 'ymax')
+                    node_ymax.text = ymax
+                    xml = tostring(node_root, pretty_print=True)
+                    #存储路径
+                    #save_xml = save_xml_path + '/' + video_name + '+' + str(c) + '.xml'
+
+                    save_xml=save_xml_path+'/'+(node_filename.text).split('.')[-2]+'.xml'
+                    with open(save_xml, 'wb') as f:
+                        f.write(xml)
+            print(xml_path1+'finished')
+#
+def mmnet_xml1(path):#只修改原xml文件里的folder和filename,加入depth，segmented，difficult，然后拷贝至voc下
+    xml_folders1=os.listdir(path)
+    for xml_folder1 in xml_folders1:#TIR_training_001...
+        xml_path=os.path.join(path,xml_folder1)
+        xml_folders2=os.listdir(xml_path)
+        for xml_folder2 in xml_folders2:#airplane_001...
+
+            xml_path1=os.path.join(xml_path,xml_folder2)
+            xml_files=os.listdir(xml_path1)
+            for xml_file in xml_files:
+                if(xml_file.split('.')[-1]=='xml'):
+                    #读取xml信息
+                    xml_path2=os.path.join(xml_path1,xml_file)
+                    tree = ET.parse(xml_path2)
+                    root = tree.getroot()
+                    #修改folder
+                    folder=root.find('folder')
+                    folder.text='VOC2007'
+                    #在root中加入segmented
+                    segmented = Element('segmented')
+                    segmented.text = '0'
+                    root.append(segmented)
+                    #修改filename
+                    filename=root.find('filename')
+                    filename.text=xml_folder1+'+'+xml_folder2+'+'+xml_file.replace('xml','jpg')
+                    #在size中加入depth
+                    size = root.find('size')
+                    depth = Element('depth')
+                    depth.text = '3'
+                    size.append(depth)
+                    # 在object中加入difficult
+                    for object in root.findall("object"):
+                        difficult = Element('difficlut')
+                        difficult.text = '0'
+                        object.append(difficult)
+                    new_path=save_xml_path+'/'+xml_folder1+'+'+xml_folder2+'+'+xml_file
+                    tree.write(new_path)
+
+
+            print(xml_path1+'finished')
+#将mmnet数据写入txt文件
+def make_mmnet_txt(path):#mmnet一共有1110文件夹
+    xml_folders1 = os.listdir(path)
+    i=0
+    for xml_folder1 in xml_folders1:  # TIR_training_001...
+        xml_path = os.path.join(path, xml_folder1)
+        xml_folders2 = os.listdir(xml_path)
+        for xml_folder2 in xml_folders2:  # airplane_001...
+            xml_path1 = os.path.join(xml_path, xml_folder2)
+            xml_files = os.listdir(xml_path1)
+            for xml_file in xml_files:
+                if (xml_file.split('.')[-1] == 'xml'):
+                    #全部写入trainval.txt
+                    with open(txt_path + '/trainval.txt', 'a') as f_trainval:
+                        txt_name = xml_folder1 + '+' + xml_folder2 + '+' + xml_file.split('.')[-2]
+                        f_trainval.write(txt_name)
+                        f_trainval.write('\n')
+                    if(i<550):#前一半写入train.txt
+                        with open(txt_path+'/train.txt','a') as f_train:
+                            txt_name=xml_folder1+'+'+xml_folder2+'+'+xml_file.split('.')[-2]
+                            f_train.write(txt_name)
+                            f_train.write('\n')
+                    else:#后一半写入val.txt
+                        with open(txt_path+'/val.txt','a') as f_val:
+                            txt_name=xml_folder1+'+'+xml_folder2+'+'+xml_file.split('.')[-2]
+                            f_val.write(txt_name)
+                            f_val.write('\n')
+            i=i+1
+            print(i,xml_path1+'finished')
+#将mmnet中的数据拷贝至voc中并重命名
+def copy_mmnet_pics(path):
+    xml_folders1 = os.listdir(path)
+    for xml_folder1 in xml_folders1:  # TIR_training_001...
+        xml_path = os.path.join(path, xml_folder1)
+        xml_folders2 = os.listdir(xml_path)
+        for xml_folder2 in xml_folders2:  # airplane_001...
+
+            xml_path1 = os.path.join(xml_path, xml_folder2)
+            xml_files = os.listdir(xml_path1)
+            for xml_file in xml_files:
+                if (xml_file.split('.')[-1] == 'jpg'):
+                    # 读取jpg信息
+
+                    xml_path2 = os.path.join(xml_path1, xml_file)
+                    new_path=pic_path
+                    new_name=xml_folder1+'+'+xml_folder2+'+'+xml_file
+                    shutil.copy(xml_path2,new_path+new_name)
+            print(xml_folder2+'finished')
+#统计name种类
+def name_count(path):
+    name_set = set()
+    xml_folders1 = os.listdir(path)
+    for xml_folder1 in xml_folders1:  # TIR_training_001...
+        xml_path = os.path.join(path, xml_folder1)
+        xml_folders2 = os.listdir(xml_path)
+        for xml_folder2 in xml_folders2:  # airplane_001...
+
+            xml_path1 = os.path.join(xml_path, xml_folder2)
+            xml_files = os.listdir(xml_path1)
+            for xml_file in xml_files:
+                if (xml_file.split('.')[-1] == 'xml'):
+                    # 读取xml信息
+                    xml_path2 = os.path.join(xml_path1, xml_file)
+                    tree = ET.parse(xml_path2)
+                    root = tree.getroot()
+                    for object in root.findall("object"):
+                        name = object.find('name').text
+                        name_set.add(name)
+    return name_set
 
 if __name__=='__main__':
     #import pdb;pdb.set_trace()
     #video_to_img(videos_path)##读取无人机视频文件并将其转换成图片存入data/VOCdevkit/VOC2007/JPEGImages/下
     #save_xml(videos_path)
-    make_txt(videos_path)
-
+    #make_txt(videos_path)
+    #mmnet_xml(mmnet_xml_path)
+    #make_mmnet_txt(mmnet_xml_path)
+    #copy_mmnet_pics(mmnet_xml_path)
+    #mmnet_xml1(mmnet_xml_path)
+    name_set=name_count(mmnet_xml_path)
+    print(name_set)
